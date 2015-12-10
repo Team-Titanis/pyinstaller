@@ -53,6 +53,7 @@ DECLPROC(PyList_New);
 DECLPROC(PyList_Append);
 DECLPROC(Py_BuildValue);
 DECLPROC(PyString_FromStringAndSize);
+DECLPROC(PyUnicodeUCS2_DecodeUTF8);
 DECLPROC(PyFile_FromString);
 DECLPROC(PyString_AsString);
 DECLPROC(PyObject_CallFunction);
@@ -92,6 +93,7 @@ int pyi_python_map_names(HMODULE dll, int pyvers)
     GETPROC(dll, PyImport_ExecCodeModule);
     GETPROC(dll, PyRun_SimpleString);
     GETPROC(dll, PyString_FromStringAndSize);
+    GETPROC(dll, PyUnicodeUCS2_DecodeUTF8);
     GETPROC(dll, PySys_SetArgv);
     GETPROC(dll, Py_SetProgramName);
     GETPROC(dll, PyImport_ImportModule);

@@ -443,7 +443,7 @@ dylib_t pyi_utils_dlopen(const char *dllpath)
 {
 
 #ifdef WIN32
-    //char buff[PATH_MAX] = NULL;
+    stb__wchar dllpath_w[PATH_MAX];
 #else
     int dlopenMode = RTLD_NOW | RTLD_GLOBAL;
 #endif
@@ -456,10 +456,8 @@ dylib_t pyi_utils_dlopen(const char *dllpath)
 #endif
 
 #ifdef WIN32
-    /* Use unicode version of function to load  dll file. */
-	//return LoadLibraryExW(stb_to_utf8(buff, dllpath, sizeof(buff)), NULL,
-            //LOAD_WITH_ALTERED_SEARCH_PATH);
-	return LoadLibraryEx(dllpath, NULL, LOAD_WITH_ALTERED_SEARCH_PATH);
+    stb_from_utf8(dllpath_w, dllpath, PATH_MAX);
+	return LoadLibraryExW(dllpath_w, NULL, LOAD_WITH_ALTERED_SEARCH_PATH);
 #else
 	return dlopen(dllpath, dlopenMode);
 #endif

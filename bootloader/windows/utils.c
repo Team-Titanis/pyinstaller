@@ -56,10 +56,11 @@ int CreateActContext(char *workpath, char *thisfile)
 {
     char manifestpath[PATH_MAX];
     char basename[PATH_MAX];
-    ACTCTX ctx;
+    ACTCTXW ctx;
+    stb__wchar manifestpath_w[PATH_MAX];
     BOOL activated;
     HANDLE k32;
-    HANDLE (WINAPI *CreateActCtx)(PACTCTX pActCtx);
+    HANDLE (WINAPI *CreateActCtxW)(PACTCTXW pActCtx);
     BOOL (WINAPI *ActivateActCtx)(HANDLE hActCtx, ULONG_PTR *lpCookie);
 
     // If not XP, nothing to do -- return OK
@@ -70,23 +71,24 @@ int CreateActContext(char *workpath, char *thisfile)
     pyi_path_basename(basename, thisfile);
     pyi_path_join(manifestpath, workpath, basename);
     strcat(manifestpath, ".manifest");
+    stb_from_utf8(manifestpath_w, manifestpath, PATH_MAX);
     VS("LOADER: manifestpath: %s\n", manifestpath);
     
     k32 = LoadLibrary("kernel32");
-    CreateActCtx = (void*)GetProcAddress(k32, "CreateActCtxA");
+    CreateActCtxW = (void*)GetProcAddress(k32, "CreateActCtxW");
     ActivateActCtx = (void*)GetProcAddress(k32, "ActivateActCtx");
     
-    if (!CreateActCtx || !ActivateActCtx)
+    if (!CreateActCtxW || !ActivateActCtx)
     {
-        VS("LOADER: Cannot find CreateActCtx/ActivateActCtx exports in kernel32.dll\n");
+        VS("LOADER: Cannot find CreateActCtxW/ActivateActCtx exports in kernel32.dll\n");
         return 0;
     }
     
     ZeroMemory(&ctx, sizeof(ctx));
     ctx.cbSize = sizeof(ACTCTX);
-    ctx.lpSource = manifestpath;
+    ctx.lpSource = manifestpath_w;
 
-    hCtx = CreateActCtx(&ctx);
+    hCtx = CreateActCtxW(&ctx);
     if (hCtx != INVALID_HANDLE_VALUE)
     {
         VS("LOADER: Activation context created\n");

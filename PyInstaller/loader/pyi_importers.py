@@ -285,7 +285,7 @@ class FrozenImporter(object):
         imp.release_lock()
 
         # Module returned only in case of no exception.
-        return module
+        return sys.modules[fullname]
 
     ### Optional Extensions to the PEP-302 Importer Protocol
 

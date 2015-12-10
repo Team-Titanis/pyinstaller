@@ -93,6 +93,7 @@ EXTDECLPROC(PyObject *, PyList_New, (int));
 EXTDECLPROC(int, PyList_Append, (PyObject *, PyObject *));
 EXTDECLPROC(PyObject *, Py_BuildValue, (char *, ...));
 EXTDECLPROC(PyObject *, PyString_FromStringAndSize, (const char *, size_t));
+EXTDECLPROC(PyObject *, PyUnicodeUCS2_DecodeUTF8, (const char *, size_t, const char *));
 EXTDECLPROC(PyObject *, PyFile_FromString, (char *, char *));
 EXTDECLPROC(char *, PyString_AsString, (PyObject *));
 EXTDECLPROC(PyObject *, PyObject_CallFunction, (PyObject *, char *, ...));

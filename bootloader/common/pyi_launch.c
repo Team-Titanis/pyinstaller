@@ -332,7 +332,11 @@ int pyi_pylib_run_scripts(ARCHIVE_STATUS *status)
 			   for full compatibility with normal execution. */
 			strcpy(buf, ptoc->name);
 			strcat(buf, ".py");
-            __file__ = PI_PyString_FromStringAndSize(buf, strlen(buf));
+            __file__ = PI_PyUnicodeUCS2_DecodeUTF8(buf, strlen(buf), NULL);
+            if (!__file__) {
+                VS("LOADER: PyUnicodeUCS2_DecodeUTF8 failed\n");
+                return -1;
+            }
             PI_PyObject_SetAttrString(__main__, "__file__", __file__);
             Py_DECREF(__file__);
 			/* Run it */
