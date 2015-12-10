@@ -93,7 +93,11 @@ def eval_statement(statement):
     if not txt:
         # return an empty string which is "not true" but iterable
         return ''
-    return eval(txt)
+    try:
+        return eval(txt)
+    except SyntaxError as ex:
+        print >> sys.stderr, "TEXT:", txt
+        raise ex
 
 
 def eval_script(scriptfilename, *args):
@@ -101,7 +105,11 @@ def eval_script(scriptfilename, *args):
     if not txt:
         # return an empty string which is "not true" but iterable
         return ''
-    return eval(txt)
+    try:
+        return eval(txt)
+    except SyntaxError as ex:
+        print >> sys.stderr, "TEXT:", txt
+        raise ex
 
 
 def get_pyextension_imports(modname):
@@ -157,6 +165,21 @@ def qt4_plugins_dir():
     return ""
 
 
+def pyside_plugins_dir():
+    plugin_dirs = eval_statement(
+        "from PySide.QtCore import QCoreApplication;"
+        "app=QCoreApplication([]);"
+        "print map(unicode,app.libraryPaths())")
+    if not plugin_dirs:
+        logger.error("Cannot find PySide plugin directories")
+        return ""
+    for d in plugin_dirs:
+        if os.path.isdir(d):
+            return str(d)  # must be 8-bit chars for one-file builds
+    logger.error("Cannot find existing PySide plugin directory")
+    return ""
+
+
 def qt4_phonon_plugins_dir():
     qt4_plugin_dirs = eval_statement(
         "from PyQt4.QtGui import QApplication;"
@@ -174,14 +197,58 @@ def qt4_phonon_plugins_dir():
     return ""
 
 
+def pyside_phonon_plugins_dir():
+    pyside_plugin_dirs = eval_statement(
+        "from PySide.QtGui import QApplication;"
+        "app=QApplication([]); app.setApplicationName('pyinstaller');"
+        "from PySide.phonon import Phonon;"
+        "v=Phonon.VideoPlayer(Phonon.VideoCategory);"
+        "print map(unicode,app.libraryPaths())")
+    if not pyside_plugin_dirs:
+        logger.error("Cannot find PySide phonon plugin directories")
+        return ""
+    for d in pyside_plugin_dirs:
+        if os.path.isdir(d):
+            return str(d)  # must be 8-bit chars for one-file builds
+    logger.error("Cannot find existing PySide phonon plugin directory")
+    return ""
+
+
 def qt4_plugins_binaries(plugin_type):
-    """Return list of dynamic libraries formatted for mod.binaries."""
+    """Return list of dynamic libraries formated for mod.binaries."""
     binaries = []
     pdir = qt4_plugins_dir()
     files = misc.dlls_in_dir(os.path.join(pdir, plugin_type))
     for f in files:
         binaries.append((
             os.path.join('qt4_plugins', plugin_type, os.path.basename(f)),
+            f, 'BINARY'))
+    return binaries
+
+
+def pyside_plugins_binaries(plugin_type):
+    """Return list of dynamic libraries formated for mod.binaries."""
+    if plugin_type is 'codecs':  # not needed
+        print 'pyside_plugins_binaries: skipping codecs'
+        return []
+    binaries = []
+    pdir = pyside_plugins_dir()
+    files = []
+    for f in misc.dlls_in_dir(os.path.join(pdir, plugin_type)):
+        fn = os.path.basename(f)
+        if fn.endswith('d4.dll'):
+            print 'pyside_plugins_binaries: skipping debug DLL', fn
+        elif fn.endswith('qsvgicon4.dll') or \
+             fn.endswith('qsvg4.dll') or \
+             fn.endswith('qmng4.dll') or \
+             fn.endswith('qtga4.dll') or \
+             fn.endswith('qtiff4.dll'):
+            print 'pyside_plugins_binaries: skipping', fn
+        else:
+            files.append(f)
+    for f in files:
+        binaries.append((
+            os.path.join('pyside_plugins', plugin_type, os.path.basename(f)),
             f, 'BINARY'))
     return binaries
 
@@ -426,28 +493,39 @@ def qt5_qml_plugins_binaries(dir):
                     f, 'BINARY'))
     return binaries    
 
+    
+if 0:
+    def django_dottedstring_imports(django_root_dir):
+        """
+        Get all the necessary Django modules specified in settings.py.
+
+        In the settings.py the modules are specified in several variables
+        as strings.
+        """
+        package_name = os.path.basename(django_root_dir)
+        compat.setenv('DJANGO_SETTINGS_MODULE', '%s.settings' % package_name)
+
+        # Extend PYTHONPATH with parent dir of django_root_dir.
+        PyInstaller.__pathex__.append(misc.get_path_to_toplevel_modules(django_root_dir))
+        # Extend PYTHONPATH with django_root_dir.
+        # Many times Django users do not specify absolute imports in the settings module.
+        PyInstaller.__pathex__.append(django_root_dir)
+
+        ret = eval_script('django-import-finder.py')
+
+        # Unset environment variables again.
+        compat.unsetenv('DJANGO_SETTINGS_MODULE')
+
+        return ret
+
 def django_dottedstring_imports(django_root_dir):
-    """
-    Get all the necessary Django modules specified in settings.py.
-
-    In the settings.py the modules are specified in several variables
-    as strings.
-    """
+    if len(django_root_dir) == 0:
+        return
+    import os
     package_name = os.path.basename(django_root_dir)
-    compat.setenv('DJANGO_SETTINGS_MODULE', '%s.settings' % package_name)
 
-    # Extend PYTHONPATH with parent dir of django_root_dir.
-    PyInstaller.__pathex__.append(misc.get_path_to_toplevel_modules(django_root_dir))
-    # Extend PYTHONPATH with django_root_dir.
-    # Many times Django users do not specify absolute imports in the settings module.
-    PyInstaller.__pathex__.append(django_root_dir)
-
-    ret = eval_script('django-import-finder.py')
-
-    # Unset environment variables again.
-    compat.unsetenv('DJANGO_SETTINGS_MODULE')
-
-    return ret
+    compat.setenv("DJANGO_SETTINGS_MODULE", os.environ['DJANGO_SETTINGS_MODULE'])
+    return eval_script("django-import-finder.py")
 
 
 def django_find_root_dir():
@@ -480,7 +558,7 @@ def django_find_root_dir():
                 if 'settings.py' in subfiles and 'urls.py' in subfiles:
                     settings_dir = os.path.join(manage_dir, f)
                     break  # Find the first directory.
-    
+
     return settings_dir
 
 
